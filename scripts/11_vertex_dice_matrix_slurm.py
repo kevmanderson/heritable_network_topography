@@ -64,16 +64,33 @@ def writeSlurm(slurm_file, partition, cmd, jobName, stime='6:00:00', nthreads=No
 
 
 base_dir    = '/gpfs/milgram/project/holmes/kma52/topo_herit'
-script_path = os.path.join(base_dir, 'scripts/10_vertex_dice_matrix_slurm.R')
+script_path = os.path.join(base_dir, 'scripts/11_vertex_dice_matrix_slurm.R')
 slurm_dir   = os.path.join(base_dir, 'slurm')
 for chunk in np.arange(1,41):
     print(chunk)
-    run_this = f'''source ~/oldRbashrc\n/gpfs/milgram/apps/hpc.rhel7/software/R/3.4.4-foss-2018a-X11-20180131/bin/Rscript {script_path} {chunk} 40'''
+    run_this = f'''source ~/oldRbashrc\n/gpfs/milgram/apps/hpc.rhel7/software/R/3.4.4-foss-2018a-X11-20180131/bin/Rscript {script_path} {chunk} 40 L'''
     print(run_this)
     script_file = os.path.join(slurm_dir, 'dice_mat_chunk{}'.format(chunk))
 
     cmd_path = writeSlurm(slurm_file=script_file, partition='long', nthreads=20, cmd=run_this, stime='48:00:00', jobName=str(chunk))
     submitSlurm(cmd_path, dependencies=None)
+
+
+
+
+base_dir    = '/gpfs/milgram/project/holmes/kma52/topo_herit'
+script_path = os.path.join(base_dir, 'scripts/11_vertex_dice_matrix_slurm.R')
+slurm_dir   = os.path.join(base_dir, 'slurm')
+#for chunk in np.arange(1,41):
+for chunk in np.arange(21, 40):
+    print(chunk)
+    run_this = f'''source ~/oldRbashrc\n/gpfs/milgram/apps/hpc.rhel7/software/R/3.4.4-foss-2018a-X11-20180131/bin/Rscript {script_path} {chunk} 40 R'''
+    print(run_this)
+    script_file = os.path.join(slurm_dir, 'dice_mat_chunk{}'.format(chunk))
+
+    cmd_path = writeSlurm(slurm_file=script_file, partition='long', nthreads=20, cmd=run_this, stime='48:00:00', jobName=str(chunk))
+    submitSlurm(cmd_path, dependencies=None)
+
 
 
 

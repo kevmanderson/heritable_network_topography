@@ -11,9 +11,8 @@ library(ggridges)
 #   2. Create a boxplot of dice coefficients, grouped by MZ/DZ/SIB/UNRELATED pairs
 
 
-# ------------------------
 # read HCP data/label info
-# ------------------------
+# -------------------
 base_dir  = '/gpfs/milgram/project/holmes/kma52/topo_herit'
 topo_dir  = paste0(base_dir, '/data/topology_heritability')
 hcp_df    = read.csv(paste0(base_dir, '/data/HCP/hcp_wMRI_for_solar.csv'))
@@ -22,10 +21,9 @@ labels    = readMat('/gpfs/milgram/project/holmes/HOLMES_UKB/external/CBIG_priva
 net_names = unlist(labels$network.name)
 
 
-# ------------------------------------------
 # read dice matrices
 # created by "01_hcp_dice_matrices.R" script
-# ------------------------------------------
+# -------------------
 topo_dir = paste0(base_dir, '/data/topology_heritability')
 dice_df  = NULL
 for (net_num in 1:17){
@@ -101,14 +99,14 @@ dice_avg_df$modality = ifelse(grepl('Aud|Som|Vis', dice_avg_df$net_name), 'uni',
 
 # linear model for het/uni difference in Dice
 summary(lm(dice_mean ~ modality, data=dice_avg_df))
-dice_avg_df %>% group_by(modality) %>% summarise(m_dice=mean(dice), sd_dice=sd(dice))
+dice_avg_df %>% group_by(modality) %>% summarise(m_dice=mean(dice_mean), sd_dice=sd(dice_mean))
 
 
 
 
-# ------------------------------------
+######################################
 # Create boxplot of MZ/DZ/SIB/UNR Dice
-# ------------------------------------
+######################################
 
 # create the kinship matrix for HCP
 hcp_df_order = hcp_df[order(hcp_df$id),]
@@ -213,9 +211,7 @@ plot_me = ggplot(data=plot_df, aes(x=group, y=dice, fill=group, color=hemi)) +
 CairoPDF(paste0(base_dir, '/figures/overall_net_dice_by_group.pdf'), height=1.75, width=1.75)
 print(plot_me)
 dev.off()
-
-
-
+#ggsave(plot=plot_me, filename=paste0(base_dir, '/figures/overall_net_dice_by_group.pdf'), height=1.5, width=1)
 
 
 

@@ -7,9 +7,9 @@ library(Cairo)
 # This script will:
 #   1. Plot Dice for an example vertex (Figure 4), split by MZ/DZ/SIB/UNR
 
-# ------------------
+####################
 # set up directories
-# ------------------
+####################
 base_dir = '/gpfs/milgram/project/holmes/kma52/topo_herit'
 out_dir  = '/gpfs/milgram/scratch/holmes/topo_herit/data/vert_dice'
 
@@ -19,6 +19,7 @@ lh_vert_dice = read_csv(paste0(out_dir, '/local_dice_L_vertex_13226_idxfrom0_rad
 
 
 # read individual parcellations
+base_dir = '/gpfs/milgram/project/holmes/kma52/topo_herit'
 mat_dat  = readMat(paste0(base_dir, '/data/HCP/HCP_S1200_1029sub_17net_parcellation.mat'))
 
 
@@ -29,9 +30,9 @@ colnames(lh_vert_dice) = hcp_df_order$id
 
 
 
-# -------------------------
+###########################
 # create HCP kinship matrix
-# -------------------------
+###########################
 kinship_big  = solarKinship2(hcp_df)
 
 # make sure kinship matrix is in right order, again
@@ -46,9 +47,9 @@ table(hcp_df_order$rel_group)
 table(kin_matrix[upper.tri(kin_matrix)])
 
 
-# ------------
+##############
 # df of MZ IDs
-# ------------
+##############
 mz_twins = as.data.frame(which(kin_matrix == 1, arr.ind=T))
 mz_twins = mz_twins[mz_twins$row != mz_twins$col,]
 mz_twins$row_id = colnames(kin_matrix)[mz_twins$row]
@@ -57,9 +58,9 @@ mz_twins$uniq_id = paste0(mz_twins$row_id, '_', mz_twins$col_id)
 mz_twins$group = 'MZ'
 
 
-# ------------
+##############
 # df of DZ IDs
-# ------------
+##############
 sib_dz = as.data.frame(which(kin_matrix == 0.5, arr.ind=T))
 sib_dz = sib_dz[sib_dz$row != sib_dz$col,]
 sib_dz$row_id = colnames(kin_matrix)[sib_dz$row]
@@ -67,9 +68,9 @@ sib_dz$col_id = colnames(kin_matrix)[sib_dz$col]
 sib_dz$uniq_id = paste0(sib_dz$row_id, '_', sib_dz$col_id)
 
 
-# -------------
+##############
 # df of SIB IDs
-# -------------
+##############
 sib_dz_df = merge(x=sib_dz, y=hcp_df_order[c('id','rel_group')], by.x='row_id', by.y='id')
 sib_dz_df = merge(x=sib_dz_df, y=hcp_df_order[c('id','rel_group')], by.x='col_id', by.y='id')
 sib_dz_df$group = ifelse(sib_dz_df$rel_group.x == 'DZ' & sib_dz_df$rel_group.y == 'DZ', 'DZ', 'SIB')
@@ -78,9 +79,9 @@ sib_dz2$uniq_id = paste0(sib_dz2$col_id, '_', sib_dz2$row_id)
 sib_dz_df = rbind(sib_dz_df, sib_dz2)
 
 
-# -------------
+##############
 # df of UNR IDs
-# -------------
+##############
 unrelated = as.data.frame(which(kin_matrix == 0, arr.ind=T))
 unrelated = unrelated[unrelated$row != unrelated$col,]
 unrelated$row_id  = colnames(kin_matrix)[unrelated$row]
@@ -89,9 +90,9 @@ unrelated$uniq_id = paste0(unrelated$row_id, '_', unrelated$col_id)
 unrelated$group = 'unrelated'
 
 
-# -------
+##########
 # combine
-# -------
+##########
 relatedness_df = rbind(mz_twins, sib_dz_df[colnames(mz_twins)], unrelated[colnames(mz_twins)])
 
 # merge with dice coefficients
@@ -114,9 +115,9 @@ plot_df = dice_related_df
 plot_df$group = factor(plot_df$group, levels=c('MZ','DZ','SIB','unrelated'))
 
 
-# -------
+##########
 # plot
-# -------
+##########
 plot_me = ggplot(data=plot_df, aes(x=group, y=dice, fill=group)) +
                     geom_boxplot(outlier.size=0.1) +
                     theme_classic() +

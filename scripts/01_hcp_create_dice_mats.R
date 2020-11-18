@@ -15,11 +15,8 @@ library(aricode)
 #       matrix: e.g. "hcp_bihemi_net_1_matrix.csv"
 
 
-
 dice_function = function(idx, uniq_combos, just_labels){
 
-    # PARAMETERS
-    # ------------
     # idx: int, required
     #       e.g. 100. will iterate over all possible pairwise comparisons
     # uniq_combos: matrix, required
@@ -67,9 +64,8 @@ dice_function = function(idx, uniq_combos, just_labels){
 
 
 
-# ---------------------------------------
-# read individual parcellations from Kong
-# ---------------------------------------
+# read individual parcellations from Kong et al 2018
+# ------------------
 base_dir = '/gpfs/milgram/project/holmes/kma52/topo_herit'
 mat_dat  = readMat(paste0(base_dir, '/data/HCP/HCP_S1200_1029sub_17net_parcellation.mat'))
 
@@ -85,6 +81,7 @@ rh_labels_df = as.data.frame(t(rh_labels))
 colnames(rh_labels_df) = paste0('rh_', colnames(rh_labels_df))
 rh_labels_df$subject   = unlist(mat_dat$subject.list)
 
+
 # merge left and right hemisphere topology
 bihemi_df = merge(x=lh_labels_df, y=rh_labels_df, by='subject')
 
@@ -98,14 +95,12 @@ bihemi_use_df = bihemi_df[,which(vert_sums != 0)]
 
 
 
-# -------------------------------------------------
 # calculate dice coefficients from network topology
 # using all bihemispheric vertices
-# -------------------------------------------------
+# ------------------
 vert_use_cols = colnames(bihemi_use_df)[grepl('lh|rh', colnames(bihemi_use_df))]
 
-# make dataframe with network labels
-# columns=vertex; rows=subjects
+# make dataframe with network labels (columns=vertices; rows=subjects)
 just_labels     = as.matrix(bihemi_use_df[,vert_use_cols])
 n_subs          = nrow(just_labels)
 uniq_combos     = combn(1:n_subs, 2)
@@ -113,10 +108,10 @@ net_just_labels = just_labels
 
 
 
-# -----------------------------------------------
+
 # BI-HEMISPHERIC
 # compute the subject by subject dice in parallel
-# -----------------------------------------------
+# ------------------
 dice_list  = mclapply(1:ncol(uniq_combos), dice_function, uniq_combos=uniq_combos, just_labels=just_labels, mc.cores = 24)
 save(x=dice_list, file=paste0(base_dir, '/data/HCP/hcp_dice_overlaps.Rdata'))
 
@@ -127,12 +122,13 @@ dice_df = do.call('rbind', dice_list)
 write_csv(dice_df, paste0(base_dir, '/data/HCP/hcp_dice_overlaps_all_nets_df.csv'))
 
 
-# ------------------------------------
+
 # read df version of the dice overlaps
-# ------------------------------------
+# ------------------
 dice_df = read.csv(paste0(base_dir, '/data/HCP/hcp_dice_overlaps_all_nets_df.csv'))
 
 # convert from long to to matrix and write csv file for each network
+# matrix format is required for later h2 estimation
 net_measures = colnames(dice_df)[grep('dice', colnames(dice_df))]
 for (dice_net in net_measures){
     write(dice_net,'')
@@ -149,10 +145,9 @@ for (dice_net in net_measures){
 
 
 
-# -------------------------------------------------
 # Left Hemisphere
 # calculate dice coefficients from network topology
-# -------------------------------------------------
+# ------------------
 lh_vert_use_cols = colnames(bihemi_use_df)[grepl('lh', colnames(bihemi_use_df))]
 lh_just_labels   = as.matrix(bihemi_use_df[,lh_vert_use_cols])
 n_subs           = nrow(lh_just_labels)
@@ -187,10 +182,9 @@ for (dice_net in net_measures){
 
 
 
-# -------------------------------------------------
 # Right hemisphere
 # calculate dice coefficients from network topology, using all bihemispheric vertices
-# -------------------------------------------------
+# ------------------
 rh_vert_use_cols = colnames(bihemi_use_df)[grepl('rh', colnames(bihemi_use_df))]
 rh_just_labels   = as.matrix(bihemi_use_df[,rh_vert_use_cols])
 n_subs      = nrow(rh_just_labels)
@@ -220,3 +214,4 @@ for (dice_net in net_measures){
     rownames(net_similarity) = bihemi_df$subject
     write_csv(net_similarity, paste0(base_dir, '/data/HCP/hcp_rh_net_',dice_net,'_matrix.csv'))
 }
+

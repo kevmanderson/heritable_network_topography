@@ -7,23 +7,24 @@ library(solarius)
 # This script will:
 #   1. Create a zygosity variable, combined from self-reported/genotyped columns
 #   2. Remove single family with an implausible family structure
-#   3. Create family related columns in format compatible with SOLAR
+#   3. Create family relatedness columns in format compatible with SOLAR
 #   4. If usable data is only available for one individual from a pair, reassign them as 'singleton'
-#   5. Save dataframe as "hcp_for_solar.csv"
+#   5. Compile total cortical surface area estimates directly from Freesurfer output
+#   6. Save dataframe as "hcp_for_solar.csv"
 
 
-# -------------------------------
+
 # read/combine HCP phenotype data
-# -------------------------------
+# ---------------
 base_dir         = '/gpfs/milgram/project/holmes/kma52/topo_herit'
 restricted_dat   = read.csv(paste0(base_dir, '/data/HCP/RESTRICTED_kma52_11_19_2018_18_4_59.csv'))
 unrestricted_dat = read.csv(paste0(base_dir, '/data/HCP/unrestricted_kma52_11_19_2018_18_5_12.csv'))
 hcp_pheno        = merge(restricted_dat, unrestricted_dat, by='Subject', all.x=TRUE)
 
 
-# --------------------------------------------
+
 # read individual parcellations from Kong 2018
-# --------------------------------------------
+# ---------------
 mat_dat      = readMat(paste0(base_dir, '/data/HCP/HCP_S1200_1029sub_17net_parcellation.mat'))
 lh_labels    = mat_dat$lh.labels
 lh_labels_df = as.data.frame(t(lh_labels))
@@ -36,10 +37,10 @@ lh_labels_df$Subject = as.numeric(subj_list)
 rh_labels_df$Subject = as.numeric(subj_list)
 
 
-# ---------------------------------------
+
 # create a composite zygosity measure
 # (prioritize genotyped vs self-reported)
-# ---------------------------------------
+# ---------------
 zyg_comb = as.character(hcp_pheno[['ZygosityGT']])
 zyg_comb[!zyg_comb %in% c('MZ','DZ')] = NA
 
@@ -51,9 +52,8 @@ hcp_pheno$Zyg_combined = zyg_comb
 
 
 
-# ------------------------------------------------
 # subset the phenotype data to match imaging sample
-# ------------------------------------------------
+# ---------------------
 hcp_pheno = hcp_pheno %>% filter(Subject %in% subj_list)
 dim(hcp_pheno)
 
@@ -70,9 +70,8 @@ hcp_pheno$fa_mo_id = paste0(hcp_pheno$Father_ID, '_', hcp_pheno$Mother_ID)
 
 
 
-# -------------------------------------------
 # add MZ TWIN column/coding needed for SOLAR
-# -------------------------------------------
+# ---------------------
 hcp_pheno$MZTWIN = ''
 mz_moms = unique(hcp_pheno$Mother_ID[which(hcp_pheno$Zyg_combined == 'MZ')])
 for (mom in mz_moms){
@@ -87,16 +86,15 @@ mz_table = sort(mz_table)
 
 
 
-# ------------------------------------------
 # turn unmatched MZ/DZ twins into singletons
-# -------------------------------------------
+# ---------------------
 singleton_mzs = names(mz_table[mz_table==1])
 
 # mark singleton MZ subjects as not-twin
 hcp_pheno$Zyg_combined[which(hcp_pheno$MZTWIN %in% singleton_mzs)] = 'NotTwin'
 hcp_pheno$MZTWIN[hcp_pheno$MZTWIN %in% singleton_mzs] = ''
 
-# turn unmatche DZ twins to singletons
+# turn unmatched DZ twins to singletons
 dz_fam_table  = sort(table(as.character(hcp_pheno$fa_mo_id[hcp_pheno$Zyg_combined == 'DZ'])))
 singleton_dzs = names(dz_fam_table[dz_fam_table == 1])
 
@@ -105,9 +103,8 @@ hcp_pheno$MZTWIN[hcp_pheno$fa_mo_id %in% singleton_dzs] = ''
 
 
 
-# -------------------------------------------
-# do some relabeling needed for SOLARIUS
-# -------------------------------------------
+# create more variables required for SOLAR
+# ---------------------
 hcp_solar    = hcp_pheno
 hcp_solar$fa = as.numeric(hcp_solar$Father_ID)
 hcp_solar$mo = as.numeric(hcp_solar$Mother_ID)
@@ -148,9 +145,8 @@ sort(table(hcp_solar$fa_mo_id[which(hcp_solar$rel_group == 'Singleton')]))
 
 
 
-# ----------------------------------
 # Group-wise estimates of covariates
-# ----------------------------------
+# ----------------------
 hcp_solar %>%
   group_by(rel_group) %>%
   summarize(n_obs=length(Age_in_Yrs),
@@ -160,24 +156,68 @@ hcp_solar %>%
 
 
 summary(aov(Age_in_Yrs ~ rel_group, data=hcp_solar))
-hcp_pheno$Gender_bin = ifelse(hcp_pheno$Gender == 'M', 1, 0)
+hcp_solar$Gender_bin = ifelse(hcp_solar$Gender == 'M', 1, 0)
 summary(aov(Gender_bin ~ rel_group, data=hcp_solar))
 summary(aov(CogFluidComp_AgeAdj ~ rel_group, data=hcp_solar))
 
 
 
+# Get surface area estimates directly from HCP freesurfer output
+# ----------------------
+surf_area_df = NULL
+for (sub in hcp_solar$id){
+    write(sub,'')
 
-# ----------------------------------
-# Select key columns and write to disk
-# ----------------------------------
+    rh_parc_file = paste0('/gpfs/milgram/data/HCP/ANAT_PREPROCESS/', as.character(sub), '/T1w/', as.character(sub), '/stats/rh.aparc.stats')
+    rh_df = read_table(rh_parc_file, col_names=F)
+    rh_sa_line = rh_df$X1[grepl('White Surface Total Area', rh_df$X1)]
+    rh_sa = as.numeric(strsplit(rh_sa_line, ',')[[1]][[4]])
+
+    lh_parc_file = paste0('/gpfs/milgram/data/HCP/ANAT_PREPROCESS/', as.character(sub), '/T1w/', as.character(sub), '/stats/lh.aparc.stats')
+    lh_df = read_table(lh_parc_file, col_names=F)
+    lh_sa_line = lh_df$X1[grepl('White Surface Total Area', lh_df$X1)]
+    lh_sa = as.numeric(strsplit(lh_sa_line, ',')[[1]][[4]])
+
+    out_row = data.frame(id=sub, rh_sa=rh_sa, lh_sa=lh_sa)
+    surf_area_df = rbind(surf_area_df, out_row)
+}
+# merge freesurfer SA with bigger df
+surf_area_df$fs_aparc_total_sa = surf_area_df$rh_sa + surf_area_df$lh_sa
+hcp_solar = merge(x=hcp_solar, y=surf_area_df, by='id')
+
+# select key columns and write to disk
+# ----------------------
 keep_cols = c('id','Age_in_Yrs','mztwin','sex','famid','fa','mo',
-              'Ethnicity','Handedness','Height','Weight','BMI',
+              'Ethnicity','Handedness','Height','Weight','BMI', 'fs_aparc_total_sa',
               'NEOFAC_N','CogFluidComp_Unadj','FS_IntraCranial_Vol')
 
 hcp_solar_write = hcp_solar[keep_cols]
 write_csv(hcp_solar_write, paste0(base_dir, '/data/HCP/hcp_for_solar.csv'))
+
 # full dataset
 write_csv(hcp_solar, paste0(base_dir, '/data/HCP/hcp_for_solar_allvars.csv'))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

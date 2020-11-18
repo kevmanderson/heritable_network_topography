@@ -57,13 +57,18 @@ end
 
 
 
-% example/double-check using height phenotype
+% example using height phenotype
 
 pheno = csvread(fullfile(base_dir, 'Height_P.csv'), 0);
 covar = csvread(fullfile(base_dir, 'Height_covar.csv'), 1);
 
 [h2, p_perm] = h2_mat(pheno, kin, covar, 10);
 
+
+out_mat = {};
+pheno = csvread(fullfile(base_dir, 'dice_net_12_P.csv'), 0);
+[h2, p_perm] = h2_mat(pheno, kin, covar, 1000);
+cur_row = [h2, p_perm];
 
 
 

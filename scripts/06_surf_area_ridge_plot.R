@@ -44,9 +44,8 @@ CV = function(arr){
 }
 
 
-# ------------------------
 # read HCP data/label info
-# ------------------------
+# --------------
 base_dir  = '/gpfs/milgram/project/holmes/kma52/topo_herit'
 hcp_df    = read.csv(paste0(base_dir, '/data/HCP/hcp_wMRI_for_solar.csv'))
 labels    = readMat('/gpfs/milgram/project/holmes/HOLMES_UKB/external/CBIG_private/stable_projects/brain_parcellation/Kong2019_MSHBM/lib/group_priors/HCP_40/17network_labels.mat')
@@ -56,21 +55,30 @@ net_names = unlist(labels$network.name)
 # set plot parameters
 ct = 1
 limit_arr = list(c(0,.16), c(0,5500), c(.5,2))
+limit_arr = list(c(0,15000), c(0,5500), c(.5,2))
 
 
-# -----------------------------
 # bihemi 17 network relative SA
-# -----------------------------
+# --------------
 type    = '_relative_SA'
-lh_cols = paste0('lh_', as.character(1:17), type)
-rh_cols = paste0('rh_', as.character(1:17), type)
+lh_cols = paste0('lh_', net_names, '_sa')
+rh_cols = paste0('rh_', net_names, '_sa')
 plot_me = hcp_df[c(lh_cols, rh_cols)]
+
+
+#for (net_col in c(lh_cols, rh_cols)){
+#    write(net_col,'')
+#    hcp_df[paste0(net_col, '_resid')] = lm(paste0(net_col, ' ~ fs_aparc_total_sa'), data=hcp_df)$resid
+#}
+#type    = '_relative_SA'
+#lh_cols = paste0('lh_', net_names, '_sa')
+#rh_cols = paste0('rh_', net_names, '_sa')
+#plot_me = hcp_df[paste0(c(lh_cols, rh_cols))]
+
 
 # melt dataframe from wide to long
 sa_melt_df = reshape2::melt(plot_me)
-sa_melt_df$net_num = unlist(lapply(sa_melt_df$variable, function(x) strsplit(as.character(x), '_')[[1]][[2]]))
-sa_melt_df$net_num = as.numeric(sa_melt_df$net_num)
-sa_melt_df$net_name = net_names[sa_melt_df$net_num]
+sa_melt_df$net_name = unlist(lapply(sa_melt_df$variable, function(x) strsplit(as.character(x), '_')[[1]][[2]]))
 head(sa_melt_df)
 
 
@@ -85,11 +93,11 @@ sa_melt_df$hemi     = ifelse(grepl('lh', sa_melt_df$variable), 'lh', 'rh')
 
 # add empty rows to make space between ridges
 tmp_row = sa_melt_df[1,]
-for (net in 1:17){
+for (net_name in plot_order){
     tmp_row$value = NA
     tmp_row$hemi  = 'fill'
-    tmp_row$net_name = net_names[net]
-    tmp_row$variable = paste0('fill_',net,'_relative_SA')
+    tmp_row$net_name = net_name
+    tmp_row$variable = paste0('fill_', net_name, '_sa')
     sa_melt_df = rbind(sa_melt_df, tmp_row)
 }
 sa_melt_df$plot_order = paste0(sa_melt_df$net_name, '_', sa_melt_df$hemi)
@@ -128,7 +136,7 @@ ridge_plot = ggplot(data=sa_melt_df, aes(x = value, y = plot_order)) +
                         theme_classic() +
                         scale_x_continuous(limits=c(limit_arr[[ct]][1], limit_arr[[ct]][2]), expand=c(0,0)) +
                         theme(axis.title.y=element_blank(),
-                        axis.ticks = element_blank(),
+                        axis.ticks.y = element_blank(),
                         text=element_text(size=10,  family="Arial", color='black'),
                         axis.text=element_text(size=10,  family="Arial", color='black'),
                         plot.title = element_text(hjust = 0.5),
@@ -136,41 +144,43 @@ ridge_plot = ggplot(data=sa_melt_df, aes(x = value, y = plot_order)) +
                         labs(title="HCP Relative Network Size", x = 'Proportion of Total Surface Area (%)')
 
 
-# ---------
+
 # save plot
-# ---------
-hist_file = paste0(base_dir, '/figures/hcp_hemisplit_ggridge',type,'.pdf')
+# ------------
+hist_file = paste0(base_dir, '/figures/hcp_hemisplit_ggridge',type,'_rr.pdf')
 CairoPDF(hist_file, width=4, height=4, family='Arial')
 print(ridge_plot)
 dev.off()
+
+print(hist_file)
 
 ggsave(plot=ridge_plot, file=hist_file, width=5, height=5)
 
 
 
 
-# --------------------------------------------------
-# create a long df with relative SA of every subject
-# --------------------------------------------------
+
+# create a long df with  SA of every subject
+# ------------
 type    = '_relative_SA'
-lh_cols = paste0('lh_', as.character(1:17), type)
-rh_cols = paste0('rh_', as.character(1:17), type)
-plot_me = hcp_df[c('id', lh_cols, rh_cols)]
+lh_cols = paste0('lh_', net_names, '_sa')
+rh_cols = paste0('rh_', net_names, '_sa')
+plot_me = hcp_df[c('id', c(lh_cols, rh_cols))]
 
 # wide to long
 sa_melt_df2 = reshape2::melt(plot_me, id.vars='id')
 sa_melt_df2 = merge(x=sa_melt_df2, y=hcp_df[c('id')], by='id')
-sa_melt_df2$net_num = unlist(lapply(sa_melt_df2$variable, function(x) strsplit(as.character(x), '_')[[1]][[2]]))
+sa_melt_df2$net_name = unlist(lapply(sa_melt_df2$variable, function(x) strsplit(as.character(x), '_')[[1]][[2]]))
 sa_melt_df2$hemi = unlist(lapply(sa_melt_df2$variable, function(x) strsplit(as.character(x), '_')[[1]][[1]]))
-sa_melt_df2$net_num = as.numeric(sa_melt_df2$net_num)
-sa_melt_df2$net_name = net_names[sa_melt_df2$net_num]
+#sa_melt_df2$net_num = as.numeric(sa_melt_df2$net_num)
+#sa_melt_df2$net_name = net_names[sa_melt_df2$net_num]
 
 
-# --------------------------------
+
 # calc coef variation for lh/rh SA
-# --------------------------------
-lh_coef_var_net = mapply(CV, hcp_df[paste0('lh_', as.character(1:17), '_relative_SA')])
-rh_coef_var_net = mapply(CV, hcp_df[paste0('rh_', as.character(1:17), '_relative_SA')])
+# ------------
+lh_coef_var_net = mapply(CV, hcp_df[lh_cols])
+rh_coef_var_net = mapply(CV, hcp_df[rh_cols])
 
 # combine into dataframe
 lh_cv_df = data.frame(coef_var=lh_coef_var_net, net_label=names(lh_coef_var_net), net_names=net_names, hemi='lh')
@@ -180,7 +190,6 @@ coef_var_df$net_names = factor(coef_var_df$net_names, levels=rev(plot_order))
 
 head(coef_var_df)
 
-
 # prepare for plotting
 hex_df_t    = data.frame(color=t(hex_df), net=colnames(hex_df))
 coef_var_df = merge(x=coef_var_df, y=hex_df_t, all.x=T, by.x='net_names', by.y='net')
@@ -188,14 +197,14 @@ coef_var_df$net_names = factor(coef_var_df$net_names, levels=colnames(hex_df))
 coef_var_df     = coef_var_df[order(coef_var_df$net_names),]
 
 
-# --------------------------------
-# Plot CV by network (relative SA)
-# --------------------------------
+
+# Plot CV by network (SA)
+# ------------
 p = ggplot(coef_var_df, aes(x=net_names, y=coef_var, alpha=hemi, fill=interaction(hemi,net_names))) +
             geom_bar(stat="identity", color="black", position=position_dodge(), width=.8) +
             #geom_errorbar(aes(ymin=Var-SE, ymax=Var+SE), width=.4, position=position_dodge(.8)) +
             theme_classic() +
-            scale_y_continuous(limits = c(0,40), breaks=seq(0,40,10), expand = c(0,0)) +
+            scale_y_continuous(limits = c(0,45), breaks=seq(0,45,15), expand = c(0,0)) +
             scale_fill_manual(values=as.character(coef_var_df$color)) +
             theme(legend.position = "none") +
             scale_alpha_discrete(range  = c( 1, .5)) +
@@ -206,17 +215,15 @@ p = ggplot(coef_var_df, aes(x=net_names, y=coef_var, alpha=hemi, fill=interactio
             coord_flip()
 
 
-filename = paste0(base_dir, '/figures/variance_by_network.pdf')
+filename = paste0(base_dir, '/figures/variance_by_network_rr.pdf')
 ggsave(filename=filename, plot=p, width=2.5, height=3.5)
 filename
 
 
 
 
-
-# -----------------------------------
 # get network-wise SD of relative SA
-# -----------------------------------
+# ------------
 plot_std_df = sa_melt_df2 %>%
                 group_by(net_name, hemi) %>%
                 summarise(net_size=mean(value), net_sd=sd(value), net_se=sd(value)/length(value))
@@ -242,24 +249,26 @@ ggsave(filename=filename, plot=p, width=2.5, height=3.5)
 filename
 
 
-# ----------------------------------
+
 # test hetero/uni differences in SD
-# ----------------------------------
+# ------------
 plot_std_df$type = ifelse(grepl('Vis|Som|Aud', plot_std_df$net_name), 'uni', 'hetero')
 summary(lm(formula = "net_sd ~ type", data=plot_std_df))
+plot_std_df %>% group_by(type) %>% summarize(std_mean=mean(net_size), std_sd = sd(net_size))
+
 
 std_var_boxplot = ggplot(data=plot_std_df, aes(x=type, y=net_sd, color = type)) +
-                    geom_point() +
-                    geom_boxplot(alpha=0.8) +
-                    scale_color_manual(values=c('#82CFFD', '#00688B')) +
-                    theme_classic() +
-                    scale_y_continuous(limits=c(0, 0.018), breaks=seq(0, 0.018, 0.006), expand=c(0,0)) +
-                    theme(axis.title.x=element_blank(),
-                            text=element_text(size=10,  family="Arial", color='black'),
-                            axis.text=element_text(size=10, color='black'),
-                            plot.title = element_text(hjust = 0.5),
-                            legend.position='none') +
-                    labs(y = 'stdev')
+                            geom_point() +
+                            geom_boxplot(alpha=0.8) +
+                            scale_color_manual(values=c('#82CFFD', '#00688B')) +
+                            theme_classic() +
+                            #scale_y_continuous(limits=c(0, 0.018), breaks=seq(0, 0.018, 0.006), expand=c(0,0)) +
+                            theme(axis.title.x=element_blank(),
+                                    text=element_text(size=10,  family="Arial", color='black'),
+                                    axis.text=element_text(size=10, color='black'),
+                                    plot.title = element_text(hjust = 0.5),
+                                    legend.position='none') +
+                            labs(y = 'stdev')
 
 
 filename = paste0(base_dir, '/figures/net_sd_boxplot.pdf')
@@ -271,9 +280,8 @@ filename
 
 
 
-# ---------------------------------
 # test hetero/uni differences in CV
-# ---------------------------------
+# ------------
 coef_var_df$type = ifelse(grepl('Vis|Som|Aud', coef_var_df$net_names), 'uni', 'hetero')
 coef_var_df %>% group_by(type) %>% summarize(cv_mean=mean(coef_var), cv_sd = sd(coef_var))
 
@@ -281,24 +289,46 @@ coef_var_df %>% group_by(type) %>% summarize(cv_mean=mean(coef_var), cv_sd = sd(
 summary(lm(formula = "coef_var ~ type", data = coef_var_df))
 
 # test again after removing outlier
-summary(lm(formula = "coef_var ~ type", data = coef_var_df %>% filter(net_label != 'rh_11_relative_SA')))
+summary(lm(formula = "coef_var ~ type", data = coef_var_df %>% filter(net_label != 'rh_TemporalParietal_sa')))
 
 coef_var_boxplot = ggplot(data=coef_var_df, aes(x=type, y=coef_var, color = type)) +
-                    geom_point() +
-                    geom_boxplot(alpha=0.8) +
-                    scale_color_manual(values=c('#82CFFD', '#00688B')) +
-                    theme_classic() +
-                    scale_y_continuous(limits=c(10, 40), breaks=seq(10, 40, 10), expand=c(0,0)) +
-                    theme(axis.title.x=element_blank(),
-                            text=element_text(size=10,  family="Arial", color='black'),
-                            axis.text=element_text(size=10, color='black'),
-                            plot.title = element_text(hjust = 0.5),
-                            legend.position='none') +
-                    labs(y = 'Coef Var')
+                            geom_point() +
+                            geom_boxplot(alpha=0.8) +
+                            scale_color_manual(values=c('#82CFFD', '#00688B')) +
+                            theme_classic() +
+                            scale_y_continuous(limits=c(0, 45), breaks=seq(0, 45, 15), expand=c(0,0)) +
+                            theme(axis.title.x=element_blank(),
+                                    text=element_text(size=10,  family="Arial", color='black'),
+                                    axis.text=element_text(size=10, color='black'),
+                                    plot.title = element_text(hjust = 0.5),
+                                    legend.position='none') +
+                            labs(y = 'Coef Var')
 
 
-filename = paste0(base_dir, '/figures/coef_of_variance_boxplot.pdf')
-CairoPDF(filename, width=2, height=2)
+
+hex_df_t    = data.frame(color=t(hex_df), net=colnames(hex_df))
+plot_df     = merge(x=coef_var_df, y=hex_df_t, all.x=T, by.x='net_names', by.y='net')
+plot_df$net = factor(plot_df$net_names, levels=colnames(hex_df))
+plot_df     = plot_df[order(plot_df$net),]
+
+
+coef_var_boxplot = ggplot(data=coef_var_df, aes(x=type, y=coef_var, group = type)) +
+                            #geom_point() +
+                            geom_point(aes(color=net_names, fill=net_names)) +
+                            geom_boxplot(alpha=0.8) +
+                            scale_color_manual(values=c('#82CFFD', '#00688B')) +
+                            theme_classic() +
+                            scale_y_continuous(limits=c(0, 45), breaks=seq(0, 45, 15), expand=c(0,0)) +
+                            theme(axis.title.x=element_blank(),
+                                    text=element_text(size=10,  family="Arial", color='black'),
+                                    axis.text=element_text(size=10, color='black'),
+                                    plot.title = element_text(hjust = 0.5),
+                                    legend.position='none') +
+                            scale_color_manual(values = unique(as.character(coef_var_df$color))) +
+                            labs(y = 'Coef Var')
+
+filename = paste0(base_dir, '/figures/coef_of_variance_boxplot_color_rr.pdf')
+CairoPDF(filename, width=1.75, height=2)
 print(coef_var_boxplot)
 dev.off()
 

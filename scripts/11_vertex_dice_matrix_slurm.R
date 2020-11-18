@@ -130,17 +130,17 @@ overlap_function = function(idx, just_labels, subj_arr, uniq_combos, hemi, radiu
 #run_chunk   = 15
 
 
-################################
 # process command line arguments
-################################
+# --------------
 args = commandArgs(trailingOnly=TRUE)
 run_chunk = as.numeric(args[1])
 num_chunk = as.numeric(args[2])
+hemi      = as.character(args[3])
 
 
-############
+
 # read data
-############
+# --------------
 base_dir = '/gpfs/milgram/project/holmes/kma52/topo_herit'
 mat_dat  = readMat(paste0(base_dir, '/data/HCP/HCP_S1200_1029sub_17net_parcellation.mat'))
 
@@ -177,8 +177,6 @@ lh_labels_df = lh_labels_df[order(lh_labels_df$subject),]
 rh_labels_df = rh_labels_df[order(rh_labels_df$subject),]
 which(lh_labels_df$subject != rh_labels_df$subject)
 
-
-hemi = 'R'
 
 if (hemi == 'R'){
     # identify non midline surface vertices
@@ -218,6 +216,15 @@ if (hemi == 'L'){
     lapply(run_idxs, overlap_function, hemi='L', subj_arr=lh_labels_df$subject, uniq_combos=uniq_combos, just_labels=lh_use_df)
 
 }
+
+
+
+
+
+
+
+
+
 
 
 

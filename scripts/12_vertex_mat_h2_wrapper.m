@@ -6,21 +6,23 @@
 
 % set up paths/dirs
 addpath('/gpfs/milgram/project/holmes/kma52/topo_herit/scripts')
-base_dir = '/gpfs/milgram/scratch/holmes/topo_herit/data/vert_dice';
+base_dir  = '/gpfs/milgram/scratch/holmes/topo_herit/data/vert_dice';
+covar_dir = '/gpfs/milgram/project/holmes/kma52/topo_herit/data/topology_heritability';
 
 % HCP kinship matrix
-kin   = csvread(fullfile(base_dir, 'K.csv'), 1);
+kin   = csvread(fullfile(covar_dir, 'K.csv'), 1);
 
 % HCP covariates
-covar = csvread(fullfile(base_dir, 'C.csv'), 1);
+covar = csvread(fullfile(covar_dir, 'covar.csv'), 1);
 
 start_list = {1,3001,6001,9001,12001,15001,18001,21001,24001,27001,30001};
+i = 1
 
 hemi = 'L';
 hemi = 'R';
+
 for (i = 1:11);
 
-    i = 1;
     out_mat = table();
     start   = start_list{i};
     stop    = start + 2999
@@ -43,7 +45,7 @@ for (i = 1:11);
         end
         row = row + 1;
     end
-    out_path = fullfile(base_dir, [hemi '_' num2str(start) '_' num2str(stop) '_dice_network_topology_h2.csv']);
+    out_path = fullfile(base_dir, [hemi '_' num2str(start) '_' num2str(stop) '_dice_network_topology_h2_rr.csv']);
     %out_path = fullfile(base_dir, [hemi '_' num2str(start) '_' num2str(stop) '_dice_network_topology_h2_radius5.csv']);
 
     writetable(out_mat, out_path)

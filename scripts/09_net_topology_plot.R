@@ -60,9 +60,9 @@ hex_df = data.frame(VisualA='#781286',
 
 
 
-############
+
 # read data
-############
+# ----------
 base_dir = '/gpfs/milgram/project/holmes/kma52/topo_herit'
 
 # read network name information
@@ -70,7 +70,7 @@ labels    = readMat('/gpfs/milgram/project/holmes/HOLMES_UKB/external/CBIG_priva
 net_names = unlist(labels$network.name)
 
 # read h2-multi estimates
-topology_h2    = read.csv(paste0(base_dir, '/data/topology_heritability/dice_network_topology_h2.csv'), header=T)
+#topology_h2    = read.csv(paste0(base_dir, '/data/topology_heritability/dice_network_topology_h2.csv'), header=T)
 lh_topology_h2 = read.csv(paste0(base_dir, '/data/topology_heritability/lh_dice_network_topology_h2.csv'), header=T)
 rh_topology_h2 = read.csv(paste0(base_dir, '/data/topology_heritability/rh_dice_network_topology_h2.csv'), header=T)
 
@@ -81,9 +81,8 @@ combined_df = rbind(lh_topology_h2, rh_topology_h2)
 
 
 
-##################################
 # h2-multi by heteromodal/unimodal
-##################################
+# ----------
 combined_netonly_df = combined_df[combined_df$net_names != 'overall',]
 combined_netonly_df$modality = ifelse(grepl('Vis|Som|Aud',combined_netonly_df$net_names), 'unimodal', 'heteromodal')
 combined_netonly_df %>% group_by(modality) %>% summarise(h2=mean(h2), stdev=sd(h2))
@@ -95,7 +94,7 @@ summary(lm(h2 ~ modality, data=combined_netonly_df))
 
 
 plot_obj = plot_h2_by_network(df=combined_df, string='Topology heritability', hex_df=hex_df, limits=c(0, .2, .05))
-filename = paste0(base_dir, '/figures/h2_of_topology_heritability.pdf')
+filename = paste0(base_dir, '/figures/h2_of_topology_heritability_rr.pdf')
 ggsave(filename=filename, plot=plot_obj, width=4, height=2.5)
 filename
 
@@ -104,6 +103,48 @@ df_corr = merge(x=lh_topology_h2, y=rh_topology_h2, by='net_names')
 df_corr = df_corr[!grepl('overall', df_corr$net_names),]
 cor.test(df_corr$h2.x, df_corr$h2.y)
 cor.test(df_corr$h2.x, df_corr$h2.y, method='spearman')
+
+
+
+
+
+
+# end
+# end
+# end
+
+# coefficient of variation
+CV = function(arr){
+    mean = mean(arr)
+    sd   = sd(arr)
+    cv   = (sd/mean)*100
+    return(cv)
+}
+
+# Dice matrices
+dice_var_df = NULL
+for (hemi in c('lh','rh')){
+    for (net in 1:17){
+        write(net,'')
+        dice_net = read.csv(paste0(base_dir, '/data/topology_heritability/',hemi,'_dice_net_', as.character(net), '_P.csv'), header=F)
+        net_dice = dice_net[upper.tri(dice_net)]
+        out_row  = data.frame('network'=net_names[net], 'hemi'=hemi, 'net_num'=net, 'stdev'=sd(net_dice), 'cv'=CV(net_dice))
+        dice_var_df = rbind(dice_var_df, out_row)
+    }
+}
+dice_var_df$type = ifelse(grepl('Vis|Somato|Aud', dice_var_df$network), 'uni', 'hetero')
+combined_df$id  = paste0(combined_df$Var4, '_', combined_df$net_names)
+dice_var_df$id  = paste0(dice_var_df$hemi, '_', dice_var_df$network)
+topo_dice_h2_df = merge(x=dice_var_df, y=combined_df, by='id')
+
+cor.test(topo_dice_h2_df$Var1, topo_dice_h2_df$sd, method='spearman')
+cor.test(topo_dice_h2_df$Var1, topo_dice_h2_df$cv, method='spearman')
+
+
+summary(lm('stdev ~ type', dice_var_df))
+summary(lm('cv ~ type', dice_var_df))
+summary(lm('Var1 ~ type', topo_dice_h2_df))
+
 
 
 

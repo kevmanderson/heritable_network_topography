@@ -10,9 +10,9 @@ library(solarius)
 #       d. Family IDs ("F.csv"), necessary for bootstrapping error bars
 
 
-# ---------
+
 # read data
-# ---------
+# --------
 base_dir = '/gpfs/milgram/project/holmes/kma52/topo_herit'
 hcp_df   = read_csv(paste0(base_dir, '/data/HCP/hcp_wMRI_for_solar.csv'))
 
@@ -23,7 +23,7 @@ dice_names = c(paste0('dice_net_',1:17), 'overall_dice')
 dice_name = dice_names[18]
 
 for (hemi in c('lh','rh','bihemi')){
-    for (dice_name in dice_names[1]){
+    for (dice_name in dice_names){
 
         write(paste0(dice_name,'_',hemi),'')
 
@@ -33,7 +33,7 @@ for (hemi in c('lh','rh','bihemi')){
 
         # make sure they are in the right order
         hcp_df_order = hcp_df[match(hcp_df$id, colnames(net_sim)),]
-        which(hcp_df_order$id != colnames(net_sim))
+        print(which(hcp_df_order$id != colnames(net_sim)))
 
         # create the kinship matrix for HCP
         kinship_big   = solarKinship2(hcp_df_order)
@@ -43,7 +43,6 @@ for (hemi in c('lh','rh','bihemi')){
         kin_match_row = match(hcp_df_order$id, rownames(kinship_big))
         kin_matrix    = kinship_big[kin_match_col, kin_match_row]
         kin_matrix    = as.data.frame(kin_matrix)
-
 
         # should be zero
         which(colnames(kin_matrix) != hcp_df_order$id)
@@ -55,11 +54,10 @@ for (hemi in c('lh','rh','bihemi')){
         net_matrix    = net_sim[net_match_col, net_match_row]
         net_matrix    = as.data.frame(net_matrix)
 
-        # check order
+        # check subject order
         which(colnames(net_matrix) != hcp_df_order$id)
         which(colnames(net_matrix) != colnames(kin_matrix))
         which(colnames(net_matrix) != rownames(kin_matrix))
-
 
         # write data for input into Tian's heritability code
         out_dir    = paste0(base_dir, '/data/topology_heritability')
@@ -74,25 +72,22 @@ for (hemi in c('lh','rh','bihemi')){
 
 # write kinship matrix
 write_csv(x=kin_matrix, paste0(out_dir, '/K.csv'))
-
-
 write_csv(x=hcp_df_order['famid'], paste0(out_dir, '/F.csv'))
 
 
 # format covariates
 hcp_df_order$sex_bin        = ifelse(hcp_df_order$sex=='M',1,0)
-hcp_df_order$Height[is.na(hcp_df_order$Height)] = mean(hcp_df_order$Height, na.rm=T)
-hcp_df_order$Weight[is.na(hcp_df_order$Weight)] = mean(hcp_df_order$Weight, na.rm=T)
-hcp_df_order$BMI[is.na(hcp_df_order$BMI)] = mean(hcp_df_order$BMI, na.rm=T)
 hcp_df_order$age_2          = hcp_df_order$Age_in_Yrs^2
 hcp_df_order$Age_in_Yrs_sex = hcp_df_order$Age_in_Yrs * hcp_df_order$sex_bin
 hcp_df_order$age_2_sex      = hcp_df_order$age_2 * hcp_df_order$sex_bin
-hcp_df_order$Ethnicity_bin = ifelse(grepl('Not', hcp_df_order$Ethnicity), 1, 0)
+hcp_df_order$fs_aparc_total_sa_scale = as.numeric(scale(hcp_df_order$fs_aparc_total_sa))
+hcp_df_order$Age_in_Yrs_scale = as.numeric(scale(hcp_df_order$Age_in_Yrs))
 
 
 # write covariates
-covars    = c('Age_in_Yrs', 'age2', 'age_2_sex', 'Height', 'Ethnicity_bin', 'Age_in_Yrs_sex', 'BMI', 'FS_IntraCranial_Vol_scale')
+covars    = c('Age_in_Yrs', 'age2', 'age_2_sex', 'Age_in_Yrs_sex', 'FS_IntraCranial_Vol_scale', 'fs_aparc_total_sa_scale')
 covar_mat = hcp_df_order[covars]
+out_dir   = paste0(base_dir, '/data/topology_heritability')
 write_csv(x=covar_mat, paste0(out_dir, '/covar.csv'))
 
 

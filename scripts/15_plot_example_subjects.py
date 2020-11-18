@@ -116,15 +116,6 @@ def two_sub_overlap(sub_a, sub_b, net, net_num, subject_list, lh_labels, rh_labe
 
 
 
-
-
-
-
-    combined_labels = np.vstack((bihemi_a_labels, bihemi_b_labels)).sum(0)
-
-
-
-
 #####################################
 # Set up required directories/paths
 #####################################
